@@ -371,6 +371,10 @@ class CudaProjector(AbstractProjector):
         if isinstance(grads, dict):
             grads = vectorize(grads, device=self.device)
 
+        # since the CUDA kernel internally uses float16, clamp the values to avoid NaNs
+        threshold = torch.finfo(torch.float16).max
+        grads = torch.clamp(grads, -threshold, threshold)
+
         batch_size = grads.shape[0]
 
         effective_batch_size = 32
