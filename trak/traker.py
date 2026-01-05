@@ -14,6 +14,7 @@ This is done in two stages:
   of target samples, given the TRAK features computed in the previous step.
 
 """
+
 from .modelout_functions import AbstractModelOutput, TASK_TO_MODELOUT
 from .projectors import (
     ProjectionType,
@@ -149,9 +150,7 @@ class TRAKer:
         self.num_params = get_num_params(self.model)
         if self.grad_wrt is not None:
             d = dict(self.model.named_parameters())
-            self.num_params_for_grad = sum(
-                [d[param_name].numel() for param_name in self.grad_wrt]
-            )
+            self.num_params_for_grad = sum([d[param_name].numel() for param_name in self.grad_wrt])
         else:
             self.num_params_for_grad = self.num_params
         # inits self.projector
@@ -164,9 +163,7 @@ class TRAKer:
 
         # normalize to make X^TX numerically stable
         # doing this instead of normalizing the projector matrix
-        self.normalize_factor = ch.sqrt(
-            ch.tensor(self.num_params_for_grad, dtype=ch.float32)
-        )
+        self.normalize_factor = ch.sqrt(ch.tensor(self.num_params_for_grad, dtype=ch.float32))
 
         self.save_dir = Path(save_dir).resolve()
         self.load_from_save_dir = load_from_save_dir
@@ -254,12 +251,8 @@ class TRAKer:
                     import fast_jl
 
                     test_gradient = ch.ones(1, self.num_params_for_grad).cuda()
-                    num_sms = ch.cuda.get_device_properties(
-                        "cuda"
-                    ).multi_processor_count
-                    fast_jl.project_rademacher_8(
-                        test_gradient, self.proj_dim, 0, num_sms
-                    )
+                    num_sms = ch.cuda.get_device_properties("cuda").multi_processor_count
+                    fast_jl.project_rademacher_8(test_gradient, self.proj_dim, 0, num_sms)
                     projector = CudaProjector
                     using_cuda_projector = True
 
@@ -270,9 +263,7 @@ class TRAKer:
                 proj_type = ProjectionType.rademacher
 
             if using_cuda_projector:
-                max_chunk_size, param_chunk_sizes = get_parameter_chunk_sizes(
-                    self.model, proj_max_batch_size
-                )
+                max_chunk_size, param_chunk_sizes = get_parameter_chunk_sizes(self.model, proj_max_batch_size)
                 self.logger.debug(
                     (
                         f"the max chunk size is {max_chunk_size}, ",
@@ -281,9 +272,7 @@ class TRAKer:
                     )
                 )
 
-                if (
-                    len(param_chunk_sizes) > 1
-                ):  # we have to use the ChunkedCudaProjector
+                if len(param_chunk_sizes) > 1:  # we have to use the ChunkedCudaProjector
                     self.logger.info(
                         (
                             f"Using ChunkedCudaProjector with"
@@ -319,9 +308,7 @@ class TRAKer:
                     )
                     return  # do not initialize projector below
 
-            self.logger.debug(
-                f"Initializing projector with grad_dim {self.num_params_for_grad}"
-            )
+            self.logger.debug(f"Initializing projector with grad_dim {self.num_params_for_grad}")
             self.projector = projector(
                 grad_dim=self.num_params_for_grad,
                 proj_dim=self.proj_dim,
@@ -354,9 +341,7 @@ class TRAKer:
 
         """
         if self.saver.model_ids.get(model_id) is None:
-            self.saver.register_model_id(
-                model_id, _allow_featurizing_already_registered
-            )
+            self.saver.register_model_id(model_id, _allow_featurizing_already_registered)
         else:
             self.saver.load_current_store(model_id)
 
@@ -399,9 +384,7 @@ class TRAKer:
         assert (
             self.ckpt_loaded == self.saver.current_model_id
         ), "Load a checkpoint using traker.load_checkpoint before featurizing"
-        assert (inds is None) or (
-            num_samples is None
-        ), "Exactly one of num_samples and inds should be specified"
+        assert (inds is None) or (num_samples is None), "Exactly one of num_samples and inds should be specified"
         assert (inds is not None) or (
             num_samples is not None
         ), "Exactly one of num_samples and inds should be specified"
@@ -413,9 +396,7 @@ class TRAKer:
             num_samples = inds.reshape(-1).shape[0]
 
         # handle re-starting featurizing from a partially featurized model (some inds already featurized)
-        _already_done = (self.saver.current_store["is_featurized"][inds] == 1).reshape(
-            -1
-        )
+        _already_done = (self.saver.current_store["is_featurized"][inds] == 1).reshape(-1)
         inds = inds[~_already_done]
         if len(inds) == 0:
             self.logger.debug("All samples in batch already featurized.")
@@ -424,21 +405,18 @@ class TRAKer:
         grads = self.gradient_computer.compute_per_sample_grad(batch=batch)
         grads = self.projector.project(grads, model_id=self.saver.current_model_id)
         grads /= self.normalize_factor
-        self.saver.current_store["grads"][inds] = (
-            grads.to(self.dtype).cpu().clone().detach()
-        )
+
+        assert not grads.isinf().any()
+        assert not grads.isnan().any()
+        self.saver.current_store["grads"][inds] = grads.to(self.dtype).cpu().clone().detach()
 
         loss_grads = self.gradient_computer.compute_loss_grad(batch)
-        self.saver.current_store["out_to_loss"][inds] = (
-            loss_grads.to(self.dtype).cpu().clone().detach()
-        )
+        self.saver.current_store["out_to_loss"][inds] = loss_grads.to(self.dtype).cpu().clone().detach()
 
         self.saver.current_store["is_featurized"][inds] = 1
         self.saver.serialize_current_model_id_metadata()
 
-    def finalize_features(
-        self, model_ids: Iterable[int] = None, del_grads: bool = False
-    ) -> None:
+    def finalize_features(self, model_ids: Iterable[int] = None, del_grads: bool = False) -> None:
         """For a set of checkpoints :math:`C` (specified by model IDs), and
         gradients :math:`\\{ \\Phi_c \\}_{c\\in C}`, this method computes
         :math:`\\Phi_c (\\Phi_c^\\top\\Phi_c)^{-1}` for all :math:`c\\in C`
@@ -464,17 +442,11 @@ class TRAKer:
 
         for model_id in tqdm(model_ids, desc="Finalizing features for all model IDs.."):
             if self.saver.model_ids.get(model_id) is None:
-                raise ModelIDException(
-                    f"Model ID {model_id} not registered, not ready for finalizing."
-                )
+                raise ModelIDException(f"Model ID {model_id} not registered, not ready for finalizing.")
             elif self.saver.model_ids[model_id]["is_featurized"] == 0:
-                raise ModelIDException(
-                    f"Model ID {model_id} not fully featurized, not ready for finalizing."
-                )
+                raise ModelIDException(f"Model ID {model_id} not fully featurized, not ready for finalizing.")
             elif self.saver.model_ids[model_id]["is_finalized"] == 1:
-                self.logger.warning(
-                    f"Model ID {model_id} already finalized, skipping .finalize_features for it."
-                )
+                self.logger.warning(f"Model ID {model_id} already finalized, skipping .finalize_features for it.")
                 continue
 
             self.saver.load_current_store(model_id)
@@ -548,17 +520,13 @@ class TRAKer:
                 Number of samples in the batch. Defaults to None.
 
         """
-        assert (inds is None) or (
-            num_samples is None
-        ), "Exactly one of num_samples and inds should be specified"
+        assert (inds is None) or (num_samples is None), "Exactly one of num_samples and inds should be specified"
         assert (inds is not None) or (
             num_samples is not None
         ), "Exactly one of num_samples and inds should be specified"
 
         if self.saver.model_ids[self.saver.current_model_id]["is_finalized"] == 0:
-            self.logger.error(
-                f"Model ID {self.saver.current_model_id} not finalized, cannot score"
-            )
+            self.logger.error(f"Model ID {self.saver.current_model_id} not finalized, cannot score")
             return None
 
         if num_samples is not None:
@@ -573,9 +541,7 @@ class TRAKer:
         grads /= self.normalize_factor
 
         exp_name = self.saver.current_experiment_name
-        self.saver.current_store[f"{exp_name}_grads"][inds] = (
-            grads.to(self.dtype).cpu().clone().detach()
-        )
+        self.saver.current_store[f"{exp_name}_grads"][inds] = grads.to(self.dtype).cpu().clone().detach()
 
     def finalize_scores(
         self,
@@ -613,9 +579,7 @@ class TRAKer:
         if model_ids is None:
             model_ids = self.saver.model_ids
         else:
-            model_ids = {
-                model_id: self.saver.model_ids[model_id] for model_id in model_ids
-            }
+            model_ids = {model_id: self.saver.model_ids[model_id] for model_id in model_ids}
         assert len(model_ids) > 0, "No model IDs to finalize scores for"
 
         if self.saver.experiments.get(exp_name) is None:
@@ -638,31 +602,23 @@ class TRAKer:
             dtype=np.float16 if self.dtype == ch.float16 else np.float32,
         )
 
-        for j, model_id in enumerate(
-            tqdm(model_ids, desc="Finalizing scores for all model IDs..")
-        ):
+        for j, model_id in enumerate(tqdm(model_ids, desc="Finalizing scores for all model IDs..")):
             self.saver.load_current_store(model_id)
             try:
                 self.saver.load_current_store(model_id, exp_name, num_targets)
             except OSError as e:
                 if allow_skip:
-                    self.logger.warning(
-                        f"Could not read target gradients for model ID {model_id}. Skipping."
-                    )
+                    self.logger.warning(f"Could not read target gradients for model ID {model_id}. Skipping.")
                     continue
                 else:
                     raise e
 
             if self.saver.model_ids[self.saver.current_model_id]["is_finalized"] == 0:
-                self.logger.warning(
-                    f"Model ID {self.saver.current_model_id} not finalized, cannot score"
-                )
+                self.logger.warning(f"Model ID {self.saver.current_model_id} not finalized, cannot score")
                 continue
 
             g = ch.as_tensor(self.saver.current_store["features"], device=self.device)
-            g_target = ch.as_tensor(
-                self.saver.current_store[f"{exp_name}_grads"], device=self.device
-            )
+            g_target = ch.as_tensor(self.saver.current_store[f"{exp_name}_grads"], device=self.device)
 
             self.score_computer.get_scores(g, g_target, accumulator=_scores_on_cpu)
             # .cpu().detach().numpy()
@@ -673,9 +629,7 @@ class TRAKer:
         _num_models_used = float(sum(_completed))
 
         # only write to mmap (on disk) once at the end
-        _scores_mmap[:] = (_scores_on_cpu.numpy() / _num_models_used) * (
-            _avg_out_to_losses / _num_models_used
-        )
+        _scores_mmap[:] = (_scores_on_cpu.numpy() / _num_models_used) * (_avg_out_to_losses / _num_models_used)
 
         self.logger.debug(f"Scores dtype is {_scores_mmap.dtype}")
         self.saver.save_scores(exp_name)
