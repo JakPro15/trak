@@ -227,6 +227,9 @@ class IterativeGradientComputer(AbstractGradientComputer):
         margin = self.modelout_fn.get_output(self.model, None, None, *batch)
         for ind in range(batch_size):
             grads[ind] = parameters_to_vector(ch.autograd.grad(margin[ind], self.model_params, retain_graph=True))
+
+        assert not grads.isinf().any()
+        assert not grads.isnan().any()
         return grads
 
     def compute_loss_grad(self, batch: Iterable[Tensor]) -> Tensor:
