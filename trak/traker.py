@@ -406,6 +406,7 @@ class TRAKer:
         grads = self.projector.project(grads, model_id=self.saver.current_model_id)
         grads /= self.normalize_factor
 
+        assert not grads.isnan().any()
         self.saver.current_store["grads"][inds] = grads.to(self.dtype).cpu().clone().detach()
 
         loss_grads = self.gradient_computer.compute_loss_grad(batch)
