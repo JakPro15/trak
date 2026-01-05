@@ -9,6 +9,7 @@ Here, we provide four implementations of the projector:
 - :class:`BasicProjector` (block-wise implementation)
 - :class:`CudaProjector` (a fast implementation with a custom CUDA kernel)
 """
+
 from abc import ABC, abstractmethod
 from typing import Union
 from enum import Enum
@@ -154,14 +155,10 @@ class BasicSingleBlockProjector(AbstractProjector):
         self.model_id = model_id
         self.proj_type = proj_type
         self.generator = ch.Generator(device=self.device)
-        self.generator = self.generator.manual_seed(
-            self.seed + int(1e4) * self.model_id
-        )
+        self.generator = self.generator.manual_seed(self.seed + int(1e4) * self.model_id)
         self.dtype = dtype
 
-        self.proj_matrix = ch.empty(
-            self.grad_dim, self.proj_dim, dtype=self.dtype, device=self.device
-        )
+        self.proj_matrix = ch.empty(self.grad_dim, self.proj_dim, dtype=self.dtype, device=self.device)
 
         self.proj_matrix_available = True
 
@@ -174,16 +171,16 @@ class BasicSingleBlockProjector(AbstractProjector):
     def generate_sketch_matrix(self):
         if not self.proj_matrix_available:
             self.proj_matrix = ch.empty(
-                self.grad_dim, self.proj_dim, dtype=self.dtype, device=self.device
+                self.grad_dim,
+                self.proj_dim,
+                dtype=self.dtype,
+                device=self.device,
             )
             self.proj_matrix_available = True
 
         if self.proj_type == ProjectionType.normal or self.proj_type == "normal":
             self.proj_matrix.normal_(generator=self.generator)
-        elif (
-            self.proj_type == ProjectionType.rademacher
-            or self.proj_type == "rademacher"
-        ):
+        elif self.proj_type == ProjectionType.rademacher or self.proj_type == "rademacher":
             self.proj_matrix.bernoulli_(p=0.5, generator=self.generator)
             # going from Bernoulli {0, 1} to Rademacher {-1, 1}
             self.proj_matrix *= 2.0
@@ -198,9 +195,7 @@ class BasicSingleBlockProjector(AbstractProjector):
         grads = grads.to(dtype=self.dtype)
         if model_id != self.model_id:
             self.model_id = model_id
-            self.generator = self.generator.manual_seed(
-                self.seed + int(1e4) * self.model_id
-            )
+            self.generator = self.generator.manual_seed(self.seed + int(1e4) * self.model_id)
             self.generate_sketch_matrix()  # updates self.proj_matrix
 
         return grads @ self.proj_matrix
@@ -240,9 +235,7 @@ class BasicProjector(AbstractProjector):
         self.proj_type = proj_type
         self.model_id = model_id
 
-        self.proj_matrix = ch.empty(
-            self.grad_dim, self.block_size, dtype=self.dtype, device=self.device
-        )
+        self.proj_matrix = ch.empty(self.grad_dim, self.block_size, dtype=self.dtype, device=self.device)
 
         self.proj_matrix_available = True
 
@@ -268,18 +261,13 @@ class BasicProjector(AbstractProjector):
 
     def generate_sketch_matrix(self, generator_state):
         if not self.proj_matrix_available:
-            self.proj_matrix = ch.empty(
-                self.grad_dim, self.block_size, dtype=self.dtype, device=self.device
-            )
+            self.proj_matrix = ch.empty(self.grad_dim, self.block_size, dtype=self.dtype, device=self.device)
             self.proj_matrix_available = True
 
         self.generator.set_state(generator_state)
         if self.proj_type == ProjectionType.normal or self.proj_type == "normal":
             self.proj_matrix.normal_(generator=self.generator)
-        elif (
-            self.proj_type == ProjectionType.rademacher
-            or self.proj_type == "rademacher"
-        ):
+        elif self.proj_type == ProjectionType.rademacher or self.proj_type == "rademacher":
             self.proj_matrix.bernoulli_(p=0.5, generator=self.generator)
             self.proj_matrix *= 2.0
             self.proj_matrix -= 1.0
@@ -290,9 +278,7 @@ class BasicProjector(AbstractProjector):
         if isinstance(grads, dict):
             grads = vectorize(grads, device=self.device)
         grads = grads.to(dtype=self.dtype)
-        sketch = ch.zeros(
-            size=(grads.size(0), self.proj_dim), dtype=self.dtype, device=self.device
-        )
+        sketch = ch.zeros(size=(grads.size(0), self.proj_dim), dtype=self.dtype, device=self.device)
 
         if model_id != self.model_id:
             self.model_id = model_id
@@ -308,9 +294,7 @@ class BasicProjector(AbstractProjector):
 
                 st = ind * self.block_size
                 ed = min((ind + 1) * self.block_size, self.proj_dim)
-                sketch[:, st:ed] = (
-                    grads.type(self.dtype) @ self.proj_matrix[:, : (ed - st)]
-                )
+                sketch[:, st:ed] = grads.type(self.dtype) @ self.proj_matrix[:, : (ed - st)]
         return sketch.type(grads.dtype)
 
 
@@ -373,9 +357,7 @@ class CudaProjector(AbstractProjector):
             import fast_jl
 
             # test run to catch at init time if projection goes through
-            fast_jl.project_rademacher_8(
-                ch.zeros(8, 1_000, device="cuda"), 512, 0, self.num_sms
-            )
+            fast_jl.project_rademacher_8(ch.zeros(8, 1_000, device="cuda"), 512, 0, self.num_sms)
         except ImportError:
             err = "You should make sure to install the CUDA projector for traker (called fast_jl).\
                   See the installation FAQs for more details."
@@ -406,7 +388,10 @@ class CudaProjector(AbstractProjector):
 
         try:
             result = fn(
-                grads, self.proj_dim, self.seed + int(1e4) * model_id, self.num_sms
+                grads,
+                self.proj_dim,
+                self.seed + int(1e4) * model_id,
+                self.num_sms,
             )
         except RuntimeError as e:
             if "CUDA error: too many resources requested for launch" in str(e):
@@ -468,10 +453,11 @@ class ChunkedCudaProjector:
         self.input_allocated = False
 
     def project(self, grads, model_id):
+        if not isinstance(grads, dict):
+            grads = ch.split(grads, self.params_per_chunk, dim=1)
+            grads = {f"{i}": chunk for i, chunk in enumerate(grads)}
         self.allocate_input()
-        ch_output = ch.zeros(
-            size=(self.feat_bs, self.proj_dim), device=self.device, dtype=self.dtype
-        )
+        ch_output = ch.zeros(size=(self.feat_bs, self.proj_dim), device=self.device, dtype=self.dtype)
         pointer = 0
         # iterate over params, keep a counter of params so far, and when prev
         # chunk reaches max_chunk_size, project and accumulate
