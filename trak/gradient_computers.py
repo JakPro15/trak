@@ -228,7 +228,7 @@ class IterativeGradientComputer(AbstractGradientComputer):
         for ind in range(batch_size):
             grads[ind] = parameters_to_vector(ch.autograd.grad(margin[ind], self.model_params, retain_graph=True))
 
-        inf_replacement = torch.finfo(self.dtype).max / 2
+        inf_replacement = torch.finfo(self.dtype).max / 10
         grads = torch.clamp(grads, -inf_replacement, inf_replacement)
 
         return grads
