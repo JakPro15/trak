@@ -9,10 +9,12 @@ interface for score computers. Then, we provide two implementations:
     block-wise matrix multiplications to avoid OOM errors.
 
 """
+
 from abc import ABC, abstractmethod
 import logging
 from torch import Tensor
 import torch
+from tqdm import tqdm
 
 from .utils import get_matrix_mult
 
@@ -66,9 +68,7 @@ class AbstractScoreComputer(ABC):
         """
 
     @abstractmethod
-    def get_scores(
-        self, features: Tensor, target_grads: Tensor, accumulator: Tensor
-    ) -> None:
+    def get_scores(self, features: Tensor, target_grads: Tensor, accumulator: Tensor) -> None:
         """Computes the scores for a given set of features and target gradients.
         In particular, this function takes in a matrix of features
         :math:`\Phi=X(X^\top X)^{-1}`, computed by the :code:`get_x_xtx_inv`
@@ -105,9 +105,7 @@ class BasicSingleBlockScoreComputer(AbstractScoreComputer):
         # torch.linalg.inv does not support float16
         return grads @ ch.linalg.inv(xtx.float()).to(self.dtype)
 
-    def get_scores(
-        self, features: Tensor, target_grads: Tensor, accumulator: Tensor
-    ) -> None:
+    def get_scores(self, features: Tensor, target_grads: Tensor, accumulator: Tensor) -> None:
         accumulator += (features @ target_grads.T).detach().cpu()
 
 
@@ -144,9 +142,7 @@ class BasicScoreComputer(AbstractScoreComputer):
 
     def get_xtx(self, grads: Tensor) -> Tensor:
         self.proj_dim = grads.shape[1]
-        result = ch.zeros(
-            self.proj_dim, self.proj_dim, dtype=self.dtype, device=self.device
-        )
+        result = ch.zeros(self.proj_dim, self.proj_dim, dtype=self.dtype, device=self.device)
         blocks = ch.split(grads, split_size_or_sections=self.CUDA_MAX_DIM_SIZE, dim=0)
 
         for block in blocks:
@@ -157,9 +153,7 @@ class BasicScoreComputer(AbstractScoreComputer):
     def get_x_xtx_inv(self, grads: Tensor, xtx: Tensor) -> Tensor:
         blocks = ch.split(grads, split_size_or_sections=self.CUDA_MAX_DIM_SIZE, dim=0)
 
-        xtx_reg = xtx + self.lambda_reg * torch.eye(
-            xtx.size(dim=0), device=xtx.device, dtype=xtx.dtype
-        )
+        xtx_reg = xtx + self.lambda_reg * torch.eye(xtx.size(dim=0), device=xtx.device, dtype=xtx.dtype)
         xtx_inv = ch.linalg.inv(xtx_reg.to(ch.float32))
 
         # center X^TX inverse a bit to avoid numerical issues when going to float16
@@ -167,23 +161,17 @@ class BasicScoreComputer(AbstractScoreComputer):
 
         xtx_inv = xtx_inv.to(self.dtype)
 
-        result = ch.empty(
-            grads.shape[0], xtx_inv.shape[1], dtype=self.dtype, device=self.device
-        )
-        for i, block in enumerate(blocks):
+        result = ch.empty(grads.shape[0], xtx_inv.shape[1], dtype=self.dtype, device=self.device)
+        for i, block in tqdm(enumerate(blocks)):
             start = i * self.CUDA_MAX_DIM_SIZE
             end = min(grads.shape[0], (i + 1) * self.CUDA_MAX_DIM_SIZE)
             result[start:end] = block.to(self.device) @ xtx_inv
         return result
 
-    def get_scores(
-        self, features: Tensor, target_grads: Tensor, accumulator: Tensor
-    ) -> Tensor:
+    def get_scores(self, features: Tensor, target_grads: Tensor, accumulator: Tensor) -> Tensor:
         train_dim = features.shape[0]
         target_dim = target_grads.shape[0]
 
         self.logger.debug(f"{train_dim=}, {target_dim=}")
 
-        accumulator += (
-            get_matrix_mult(features=features, target_grads=target_grads).detach().cpu()
-        )
+        accumulator += get_matrix_mult(features=features, target_grads=target_grads).detach().cpu()
