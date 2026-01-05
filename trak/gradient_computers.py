@@ -228,6 +228,9 @@ class IterativeGradientComputer(AbstractGradientComputer):
         for ind in range(batch_size):
             grads[ind] = parameters_to_vector(ch.autograd.grad(margin[ind], self.model_params, retain_graph=True))
 
+        inf_replacement = torch.finfo(self.dtype).max / 2
+        grads = torch.nan_to_num(grads, posinf=inf_replacement, neginf=-inf_replacement)
+
         return grads
 
     def compute_loss_grad(self, batch: Iterable[Tensor]) -> Tensor:
