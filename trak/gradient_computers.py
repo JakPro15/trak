@@ -228,6 +228,16 @@ class IterativeGradientComputer(AbstractGradientComputer):
         for ind in range(batch_size):
             grads[ind] = parameters_to_vector(ch.autograd.grad(margin[ind], self.model_params, retain_graph=True))
 
+        if grads.isnan().any():
+            self.logger.warning("NaN in gradients detected")
+            grads = torch.nan_to_num(grads, nan=0.0)
+
+        # since the CUDA projection kernel internally uses float16, clamp the values to float16 limit
+        threshold = torch.finfo(torch.float16).max
+        if grads.abs().max() > threshold:
+            self.logger.warning("Value over float16 limit in gradients detected")
+            grads = torch.clamp(grads, -threshold, threshold)
+
         return grads
 
     def compute_loss_grad(self, batch: Iterable[Tensor]) -> Tensor:
