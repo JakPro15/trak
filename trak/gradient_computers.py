@@ -234,7 +234,7 @@ class IterativeGradientComputer(AbstractGradientComputer):
 
         # since the CUDA projection kernel internally uses float16, clamp the values to float16 limit
         threshold = torch.finfo(torch.float16).max
-        if grads.abs().max() > threshold:
+        if grads.max() > threshold or grads.min() < -threshold:
             self.logger.warning("Value over float16 limit in gradients detected")
             grads = torch.clamp(grads, -threshold, threshold)
 
