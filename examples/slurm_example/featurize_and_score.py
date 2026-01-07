@@ -9,18 +9,16 @@ from trak import TRAKer
 def main(model_id):
     # replace this with your dataset, model, and checkpoints of choice
     # ==================================
-    model = models.resnet18(weights='DEFAULT').cuda()
+    model = models.resnet18(weights="DEFAULT").cuda()
     model.eval()
-    ds_train = datasets.CIFAR10(root='/tmp',
-                                download=True,
-                                train=True,
-                                transform=transforms.ToTensor())
+    ds_train = datasets.CIFAR10(
+        root="/tmp", download=True, train=True, transform=transforms.ToTensor()
+    )
     loader_train = DataLoader(ds_train, batch_size=100, shuffle=False)
 
-    ds_val = datasets.CIFAR10(root='/tmp',
-                              download=True,
-                              train=False,
-                              transform=transforms.ToTensor())
+    ds_val = datasets.CIFAR10(
+        root="/tmp", download=True, train=False, transform=transforms.ToTensor()
+    )
     loader_val = DataLoader(ds_val, batch_size=100, shuffle=False)
 
     # use model_id here to load the proper checkpoint
@@ -30,32 +28,36 @@ def main(model_id):
 
     # the job with JOB ID is the one responsible for metadata.json
     # all other jobs do not attempt to read/write to metadata.json
-    should_load_from_save_dir = (model_id == 0)
+    should_load_from_save_dir = model_id == 0
 
-    traker = TRAKer(model=model,
-                    task='image_classification',
-                    save_dir='./slurm_example_results',
-                    load_from_save_dir=should_load_from_save_dir,
-                    train_set_size=len(ds_train),
-                    device='cuda')
+    traker = TRAKer(
+        model=model,
+        task="image_classification",
+        save_dir="./slurm_example_results",
+        load_from_save_dir=should_load_from_save_dir,
+        train_set_size=len(ds_train),
+        device="cuda",
+    )
 
     traker.load_checkpoint(ckpt, model_id=model_id)
-    for batch in tqdm(loader_train, desc='Computing TRAK embeddings...'):
+    for batch in tqdm(loader_train, desc="Computing TRAK embeddings..."):
         batch = [x.cuda() for x in batch]
         traker.featurize(batch=batch, num_samples=loader_train.batch_size)
     traker.finalize_features(model_ids=[model_id])
 
-    traker.start_scoring_checkpoint(exp_name='slurm_example',
-                                    checkpoint=ckpt,
-                                    model_id=model_id,
-                                    num_targets=len(loader_val.dataset))
-    for batch in tqdm(loader_val, desc='Scoring...'):
+    traker.start_scoring_checkpoint(
+        exp_name="slurm_example",
+        checkpoint=ckpt,
+        model_id=model_id,
+        num_targets=len(loader_val.dataset),
+    )
+    for batch in tqdm(loader_val, desc="Scoring..."):
         batch = [x.cuda() for x in batch]
         traker.score(batch=batch, num_samples=loader_val.batch_size)
 
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument('--model_id', required=True, type=int)
+    parser.add_argument("--model_id", required=True, type=int)
     args = parser.parse_args()
     main(args.model_id)

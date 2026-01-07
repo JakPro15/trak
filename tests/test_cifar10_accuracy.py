@@ -140,6 +140,6 @@ def test_cifar_acc(serialize, use_cuda_projector, dtype, batch_size, tmp_path):
     print(scores.shape)
 
     avg_corr = eval_correlations(infls=scores, tmp_path=tmp_path)
-    assert (
-        avg_corr > 0.05
-    ), "correlation with the above 3 CIFAR-10 checkpoints should be >= 0.05"
+    assert avg_corr > 0.05, (
+        "correlation with the above 3 CIFAR-10 checkpoints should be >= 0.05"
+    )

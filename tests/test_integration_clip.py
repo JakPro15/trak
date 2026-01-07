@@ -5,6 +5,7 @@ import logging
 import pytest
 import open_clip
 import torch
+
 torch.backends.cuda.enable_mem_efficient_sdp(False)
 
 

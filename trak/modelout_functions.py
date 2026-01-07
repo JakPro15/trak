@@ -16,6 +16,7 @@ See, e.g. `this tutorial
 <https://trak.readthedocs.io/en/latest/modeloutput.html>`_ for an example on how
 to subclass :code:`AbstractModelOutput` for a task of your choice.
 """
+
 from abc import ABC, abstractmethod
 from typing import Iterable
 from torch import Tensor

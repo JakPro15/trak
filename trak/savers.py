@@ -6,6 +6,7 @@ savers. Then, we provide one implementation:
   loading and saving small chunks of data (e.g.) during featurizing feasible
   without loading the entire file into memory.
 """
+
 from abc import ABC, abstractmethod
 from typing import Optional, Iterable, Union
 from pathlib import Path
@@ -80,22 +81,24 @@ class AbstractSaver(ABC):
             with open(self.metadata_file, "r") as f:
                 existsing_metadata = json.load(f)
             existing_jl_dim = int(existsing_metadata["JL dimension"])
-            assert (
-                self.metadata["JL dimension"] == existing_jl_dim
-            ), f"In {self.save_dir} there are models using JL dimension {existing_jl_dim},\n\
+            assert self.metadata["JL dimension"] == existing_jl_dim, (
+                f"In {self.save_dir} there are models using JL dimension {existing_jl_dim},\n\
                    and this TRAKer instance uses JL dimension {self.metadata['JL dimension']}."
+            )
 
             existing_matrix_type = existsing_metadata["JL matrix type"]
-            assert (
-                self.metadata["JL matrix type"] == existing_matrix_type
-            ), f"In {self.save_dir} there are models using a {existing_matrix_type} JL matrix,\n\
+            assert self.metadata["JL matrix type"] == existing_matrix_type, (
+                f"In {self.save_dir} there are models using a {existing_matrix_type} JL matrix,\n\
                    and this TRAKer instance uses a {self.metadata['JL matrix type']} JL matrix."
+            )
 
             assert (
                 self.metadata["train set size"] == existsing_metadata["train set size"]
-            ), f"In {self.save_dir} there are models TRAKing\n\
+            ), (
+                f"In {self.save_dir} there are models TRAKing\n\
                    {existsing_metadata['train set size']} examples, and in this TRAKer instance\n\
                    there are {self.metadata['train set size']} examples."
+            )
 
         elif self.load_from_save_dir:
             with open(self.metadata_file, "w") as f:
@@ -352,7 +355,9 @@ class MmapSaver(AbstractSaver):
         with open(self.experiments_file, "w") as fp:
             json.dump(exp_f, fp)
 
-        if os.path.exists(prefix.joinpath(f"{exp_name}_grads.mmap")):
+        if os.path.exists(prefix.joinpath(f"{exp_name}_grads.mmap")) and os.path.exists(
+            self.save_dir.joinpath(f"scores/{exp_name}.mmap")
+        ):
             mode = "r+"
         else:
             mode = "w+"

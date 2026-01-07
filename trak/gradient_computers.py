@@ -140,7 +140,9 @@ class FunctionalGradientComputer(AbstractGradientComputer):
 
         """
         # taking the gradient wrt weights (second argument of get_output, hence argnums=1)
-        grads_loss = torch.func.grad(self.modelout_fn.get_output, has_aux=False, argnums=1)
+        grads_loss = torch.func.grad(
+            self.modelout_fn.get_output, has_aux=False, argnums=1
+        )
 
         # map over batch dimensions (hence 0 for each batch dimension, and None for model params)
         grads = torch.func.vmap(
@@ -183,7 +185,9 @@ class FunctionalGradientComputer(AbstractGradientComputer):
             Tensor:
                 The gradient of the loss with respect to the model output.
         """
-        return self.modelout_fn.get_out_to_loss_grad(self.model, self.func_weights, self.func_buffers, batch)
+        return self.modelout_fn.get_out_to_loss_grad(
+            self.model, self.func_weights, self.func_buffers, batch
+        )
 
 
 class IterativeGradientComputer(AbstractGradientComputer):
@@ -201,7 +205,9 @@ class IterativeGradientComputer(AbstractGradientComputer):
         self.grad_wrt = grad_wrt
         self.logger = logging.getLogger("GradientComputer")
         if self.grad_wrt is not None:
-            self.logger.warning("IterativeGradientComputer: ignoring grad_wrt argument.")
+            self.logger.warning(
+                "IterativeGradientComputer: ignoring grad_wrt argument."
+            )
 
     def load_model_params(self, model) -> Tensor:
         self.model = model
@@ -226,7 +232,9 @@ class IterativeGradientComputer(AbstractGradientComputer):
 
         margin = self.modelout_fn.get_output(self.model, None, None, *batch)
         for ind in range(batch_size):
-            grads[ind] = parameters_to_vector(ch.autograd.grad(margin[ind], self.model_params, retain_graph=True))
+            grads[ind] = parameters_to_vector(
+                ch.autograd.grad(margin[ind], self.model_params, retain_graph=True)
+            )
 
         if grads.isnan().any():
             self.logger.warning("NaN in gradients detected")
