@@ -9,9 +9,7 @@ from trak.modelout_functions import ImageClassificationModelOutput
 
 @pytest.fixture
 def cpu_proj():
-    projector = BasicProjector(
-        grad_dim=11689512, proj_dim=20, seed=0, proj_type="rademacher", device="cpu"
-    )
+    projector = BasicProjector(grad_dim=11689512, proj_dim=20, seed=0, proj_type="rademacher", device="cpu")
     return projector
 
 

@@ -23,9 +23,7 @@ PARAM = list(
 )
 
 
-@pytest.mark.parametrize(
-    "seed, proj_type, dtype, input_shape, proj_dim, num_sms", PARAM
-)
+@pytest.mark.parametrize("seed, proj_type, dtype, input_shape, proj_dim, num_sms", PARAM)
 @pytest.mark.cuda
 def test_create_proj(
     seed,
@@ -64,9 +62,7 @@ def test_create_proj(
     ch.save(p.cpu(), f"./{GPU_NAME}.pt")
 
 
-@pytest.mark.parametrize(
-    "seed, proj_type, dtype, input_shape, proj_dim, num_sms", PARAM
-)
+@pytest.mark.parametrize("seed, proj_type, dtype, input_shape, proj_dim, num_sms", PARAM)
 @pytest.mark.cuda
 def test_same_proj(
     seed,

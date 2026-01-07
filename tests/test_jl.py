@@ -17,9 +17,7 @@ def get_max_chunk_size(
     return max_chunk_size
 
 
-def make_input(
-    input_shape, max_chunk_size, device="cuda", dtype=torch.float32, g_tensor=None
-):
+def make_input(input_shape, max_chunk_size, device="cuda", dtype=torch.float32, g_tensor=None):
     if g_tensor is None:
         g = testing.make_tensor(*input_shape, device=device, dtype=dtype)
     else:

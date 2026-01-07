@@ -92,9 +92,7 @@ class AbstractSaver(ABC):
                    and this TRAKer instance uses a {self.metadata['JL matrix type']} JL matrix."
             )
 
-            assert (
-                self.metadata["train set size"] == existsing_metadata["train set size"]
-            ), (
+            assert self.metadata["train set size"] == existsing_metadata["train set size"], (
                 f"In {self.save_dir} there are models TRAKing\n\
                    {existsing_metadata['train set size']} examples, and in this TRAKer instance\n\
                    there are {self.metadata['train set size']} examples."
@@ -114,10 +112,7 @@ class AbstractSaver(ABC):
             for existing_model_id_file in self.model_ids_files:
                 with open(existing_model_id_file, "r") as f:
                     existing_id = json.load(f)
-                    existing_id = {
-                        int(model_id): metadata
-                        for model_id, metadata in existing_id.items()
-                    }
+                    existing_id = {int(model_id): metadata for model_id, metadata in existing_id.items()}
                 self.model_ids.update(existing_id)
 
             if os.path.isfile(self.experiments_file):
@@ -129,18 +124,12 @@ class AbstractSaver(ABC):
 
         existing_ids = list(self.model_ids.keys())
         if len(existing_ids) > 0:
-            self.logger.info(
-                f"Existing model IDs in {self.save_dir}: {sorted(existing_ids)}"
-            )
-            ids_finalized = sorted(
-                list([id for id, v in self.model_ids.items() if v["is_finalized"] == 1])
-            )
+            self.logger.info(f"Existing model IDs in {self.save_dir}: {sorted(existing_ids)}")
+            ids_finalized = sorted(list([id for id, v in self.model_ids.items() if v["is_finalized"] == 1]))
             if len(ids_finalized) > 0:
                 self.logger.info(f"Model IDs that have been finalized: {ids_finalized}")
             else:
-                self.logger.info(
-                    f"No model IDs in {self.save_dir} have been finalized."
-                )
+                self.logger.info(f"No model IDs in {self.save_dir} have been finalized.")
         else:
             self.logger.info(f"No existing model IDs in {self.save_dir}.")
 
@@ -268,9 +257,7 @@ class MmapSaver(AbstractSaver):
         self.train_set_size = train_set_size
         self.proj_dim = proj_dim
 
-    def register_model_id(
-        self, model_id: int, _allow_featurizing_already_registered: bool
-    ) -> None:
+    def register_model_id(self, model_id: int, _allow_featurizing_already_registered: bool) -> None:
         """This method
         1) checks if the model ID already exists in the save dir
         2) if yes, it raises an error since model IDs must be unique
@@ -287,9 +274,7 @@ class MmapSaver(AbstractSaver):
         """
         self.current_model_id = model_id
 
-        if self.current_model_id in self.model_ids.keys() and (
-            not _allow_featurizing_already_registered
-        ):
+        if self.current_model_id in self.model_ids.keys() and (not _allow_featurizing_already_registered):
             err_msg = f"model id {self.current_model_id} is already registered. Check {self.save_dir}"
             raise ModelIDException(err_msg)
         self.model_ids[self.current_model_id] = {"is_featurized": 0, "is_finalized": 0}
@@ -298,9 +283,7 @@ class MmapSaver(AbstractSaver):
         self.serialize_current_model_id_metadata(already_exists=False)
 
     def serialize_current_model_id_metadata(self, already_exists=True) -> None:
-        is_featurized = int(
-            self.current_store["is_featurized"].sum() == self.train_set_size
-        )
+        is_featurized = int(self.current_store["is_featurized"].sum() == self.train_set_size)
 
         # update the metadata JSON file
         content = {
@@ -312,9 +295,7 @@ class MmapSaver(AbstractSaver):
         # update the metadata dict within the class instance
         self.model_ids[self.current_model_id]["is_featurized"] = is_featurized
         if (is_featurized == 1) or not already_exists:
-            with open(
-                self.save_dir.joinpath(f"id_{self.current_model_id}.json"), "w"
-            ) as f:
+            with open(self.save_dir.joinpath(f"id_{self.current_model_id}.json"), "w") as f:
                 json.dump(content, f)
 
     def init_store(self, model_id) -> None:
@@ -361,9 +342,7 @@ class MmapSaver(AbstractSaver):
             mode = "r+"
         else:
             mode = "w+"
-        self.load_current_store(
-            model_id=model_id, exp_name=exp_name, exp_num_targets=num_targets, mode=mode
-        )
+        self.load_current_store(model_id=model_id, exp_name=exp_name, exp_num_targets=num_targets, mode=mode)
 
     def _load(self, fname, shape, mode, dtype=None):
         if mode == "w+":

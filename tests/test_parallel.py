@@ -54,9 +54,7 @@ def test_featurize_and_score_in_parallel(tmp_path):
             logging_level=logging.DEBUG,
         )
 
-        traker.start_scoring_checkpoint(
-            "test_experiment", ckpt, model_id, num_targets=2_000
-        )
+        traker.start_scoring_checkpoint("test_experiment", ckpt, model_id, num_targets=2_000)
         for batch in tqdm(loader_val, desc="Scoring..."):
             traker.score(batch=batch, num_samples=len(batch[0]))
 
@@ -111,9 +109,7 @@ def test_score_multiple(tmp_path):
                 logging_level=logging.DEBUG,
             )
 
-            traker.start_scoring_checkpoint(
-                "test_experiment", ckpt, model_id, num_targets=2_000
-            )
+            traker.start_scoring_checkpoint("test_experiment", ckpt, model_id, num_targets=2_000)
             for batch in tqdm(loader_val, desc="Scoring..."):
                 traker.score(batch=batch, num_samples=len(batch[0]))
 
@@ -159,9 +155,7 @@ def test_score_in_shards(tmp_path):
     # this should be essentially equivalent to scoring each
     # shard in a separate script
     for scoring_inds in scoring_shards:
-        loader_val = get_dataloader(
-            BETONS, batch_size=batch_size, split="val", indices=scoring_inds
-        )
+        loader_val = get_dataloader(BETONS, batch_size=batch_size, split="val", indices=scoring_inds)
         for model_id, ckpt in enumerate(ckpts):
             traker = TRAKer(
                 model=model,
@@ -172,13 +166,9 @@ def test_score_in_shards(tmp_path):
                 logging_level=logging.DEBUG,
             )
 
-            traker.start_scoring_checkpoint(
-                "test_experiment", ckpt, model_id, num_targets=2000
-            )
+            traker.start_scoring_checkpoint("test_experiment", ckpt, model_id, num_targets=2000)
             for batch_idx, batch in enumerate(tqdm(loader_val, desc="Scoring...")):
-                batch_inds = scoring_inds[
-                    batch_idx * batch_size : (batch_idx + 1) * batch_size
-                ]
+                batch_inds = scoring_inds[batch_idx * batch_size : (batch_idx + 1) * batch_size]
                 traker.score(batch=batch, inds=batch_inds)
 
     scores = traker.finalize_scores("test_experiment")
@@ -208,9 +198,7 @@ def test_featurize_in_shards(tmp_path):
     # shard in a separate script
     featurizing_shards = [np.arange(5000), np.arange(5000, 10_000)]
     for featurizing_inds in featurizing_shards:
-        loader_train = get_dataloader(
-            BETONS, batch_size=batch_size, split="train", indices=featurizing_inds
-        )
+        loader_train = get_dataloader(BETONS, batch_size=batch_size, split="train", indices=featurizing_inds)
         traker = TRAKer(
             model=model,
             task="image_classification",
@@ -222,12 +210,8 @@ def test_featurize_in_shards(tmp_path):
 
         for model_id, ckpt in enumerate(ckpts):
             traker.load_checkpoint(checkpoint=ckpt, model_id=model_id)
-            for batch_idx, batch in enumerate(
-                tqdm(loader_train, desc="Computing TRAK embeddings")
-            ):
-                batch_inds = featurizing_inds[
-                    batch_idx * batch_size : (batch_idx + 1) * batch_size
-                ]
+            for batch_idx, batch in enumerate(tqdm(loader_train, desc="Computing TRAK embeddings")):
+                batch_inds = featurizing_inds[batch_idx * batch_size : (batch_idx + 1) * batch_size]
                 traker.featurize(batch=batch, inds=batch_inds)
 
     traker.finalize_features()
@@ -242,9 +226,7 @@ def test_featurize_in_shards(tmp_path):
     )
 
     for model_id, ckpt in enumerate(ckpts):
-        traker.start_scoring_checkpoint(
-            "test_experiment", ckpt, model_id, num_targets=2_000
-        )
+        traker.start_scoring_checkpoint("test_experiment", ckpt, model_id, num_targets=2_000)
         for batch in tqdm(loader_val, desc="Scoring..."):
             traker.score(batch=batch, num_samples=len(batch[0]))
 
@@ -275,9 +257,7 @@ def test_preemption(tmp_path):
     # shard in a separate script
     featurizing_shards = [np.arange(5000), np.arange(10_000)]
     for featurizing_inds in featurizing_shards:
-        loader_train = get_dataloader(
-            BETONS, batch_size=batch_size, split="train", indices=featurizing_inds
-        )
+        loader_train = get_dataloader(BETONS, batch_size=batch_size, split="train", indices=featurizing_inds)
         traker = TRAKer(
             model=model,
             task="image_classification",
@@ -289,12 +269,8 @@ def test_preemption(tmp_path):
 
         for model_id, ckpt in enumerate(ckpts):
             traker.load_checkpoint(checkpoint=ckpt, model_id=model_id)
-            for batch_idx, batch in enumerate(
-                tqdm(loader_train, desc="Computing TRAK embeddings")
-            ):
-                batch_inds = featurizing_inds[
-                    batch_idx * batch_size : (batch_idx + 1) * batch_size
-                ]
+            for batch_idx, batch in enumerate(tqdm(loader_train, desc="Computing TRAK embeddings")):
+                batch_inds = featurizing_inds[batch_idx * batch_size : (batch_idx + 1) * batch_size]
                 traker.featurize(batch=batch, inds=batch_inds)
 
     traker.finalize_features()
@@ -309,9 +285,7 @@ def test_preemption(tmp_path):
     )
 
     for model_id, ckpt in enumerate(ckpts):
-        traker.start_scoring_checkpoint(
-            "test_experiment", ckpt, model_id, num_targets=2_000
-        )
+        traker.start_scoring_checkpoint("test_experiment", ckpt, model_id, num_targets=2_000)
         for batch in tqdm(loader_val, desc="Scoring..."):
             traker.score(batch=batch, num_samples=len(batch[0]))
 

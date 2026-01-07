@@ -144,16 +144,12 @@ class ImageClassificationModelOutput(AbstractModelOutput):
         cloned_logits = logits.clone()
         # remove the logits of the correct labels from the sum
         # in logsumexp by setting to -ch.inf
-        cloned_logits[bindex, label.unsqueeze(0)] = ch.tensor(
-            -ch.inf, device=logits.device, dtype=logits.dtype
-        )
+        cloned_logits[bindex, label.unsqueeze(0)] = ch.tensor(-ch.inf, device=logits.device, dtype=logits.dtype)
 
         margins = logits_correct - cloned_logits.logsumexp(dim=-1)
         return margins.sum()
 
-    def get_out_to_loss_grad(
-        self, model, weights, buffers, batch: Iterable[Tensor]
-    ) -> Tensor:
+    def get_out_to_loss_grad(self, model, weights, buffers, batch: Iterable[Tensor]) -> Tensor:
         """Computes the (reweighting term Q in the paper)
 
         Args:
@@ -174,9 +170,7 @@ class ImageClassificationModelOutput(AbstractModelOutput):
         logits = ch.func.functional_call(model, (weights, buffers), images)
         # here we are directly implementing the gradient instead of relying on autodiff to do
         # that for us
-        ps = self.softmax(logits / self.loss_temperature)[
-            ch.arange(logits.size(0)), labels
-        ]
+        ps = self.softmax(logits / self.loss_temperature)[ch.arange(logits.size(0)), labels]
         return (1 - ps).clone().detach().unsqueeze(-1)
 
 
@@ -196,9 +190,7 @@ class CLIPModelOutput(AbstractModelOutput):
     image_embeddings = None
     text_embeddings = None
 
-    def __init__(
-        self, temperature: float = None, simulated_batch_size: int = 300
-    ) -> None:
+    def __init__(self, temperature: float = None, simulated_batch_size: int = 300) -> None:
         """
 
         Args:
@@ -328,9 +320,7 @@ class CLIPModelOutput(AbstractModelOutput):
         sim_bs = CLIPModelOutput.sim_batch_size
 
         if all_im_embs is None:
-            raise AssertionError(
-                "Run traker.task.get_embeddings first before featurizing!"
-            )
+            raise AssertionError("Run traker.task.get_embeddings first before featurizing!")
 
         # tailored for open_clip
         # https://github.com/mlfoundations/open_clip/blob/fb72f4db1b17133befd6c67c9cf32a533b85a321/src/open_clip/model.py#L242-L245
@@ -339,20 +329,14 @@ class CLIPModelOutput(AbstractModelOutput):
             model, (weights, buffers), args=(), kwargs=clip_inputs
         )
 
-        ii = ch.multinomial(
-            input=ch.arange(N).float(), num_samples=sim_bs, replacement=False
-        )
+        ii = ch.multinomial(input=ch.arange(N).float(), num_samples=sim_bs, replacement=False)
 
-        result = -ch.logsumexp(
-            -image_embeddings @ (text_embeddings - all_txt_embs[ii]).T, dim=1
-        ) + -ch.logsumexp(
+        result = -ch.logsumexp(-image_embeddings @ (text_embeddings - all_txt_embs[ii]).T, dim=1) + -ch.logsumexp(
             -text_embeddings @ (image_embeddings - all_im_embs[ii]).T, dim=1
         )
         return result.sum()  # shape of result should be [1]
 
-    def get_out_to_loss_grad(
-        self, model, weights, buffers, batch: Iterable[Tensor]
-    ) -> Tensor:
+    def get_out_to_loss_grad(self, model, weights, buffers, batch: Iterable[Tensor]) -> Tensor:
         """Computes the (reweighting term Q in the paper)
 
         Args:
@@ -414,35 +398,25 @@ class TextClassificationModelOutput(AbstractModelOutput):
             "attention_mask": attention_mask.unsqueeze(0),
         }
 
-        logits = ch.func.functional_call(
-            model, (weights, buffers), args=(), kwargs=kw_inputs
-        )
+        logits = ch.func.functional_call(model, (weights, buffers), args=(), kwargs=kw_inputs)
         bindex = ch.arange(logits.shape[0]).to(logits.device, non_blocking=False)
         logits_correct = logits[bindex, label.unsqueeze(0)]
 
         cloned_logits = logits.clone()
-        cloned_logits[bindex, label.unsqueeze(0)] = ch.tensor(
-            -ch.inf, device=logits.device, dtype=logits.dtype
-        )
+        cloned_logits[bindex, label.unsqueeze(0)] = ch.tensor(-ch.inf, device=logits.device, dtype=logits.dtype)
 
         margins = logits_correct - cloned_logits.logsumexp(dim=-1)
         return margins.sum()
 
-    def get_out_to_loss_grad(
-        self, model, weights, buffers, batch: Iterable[Tensor]
-    ) -> Tensor:
+    def get_out_to_loss_grad(self, model, weights, buffers, batch: Iterable[Tensor]) -> Tensor:
         input_ids, token_type_ids, attention_mask, labels = batch
         kw_inputs = {
             "input_ids": input_ids,
             "token_type_ids": token_type_ids,
             "attention_mask": attention_mask,
         }
-        logits = ch.func.functional_call(
-            model, (weights, buffers), args=(), kwargs=kw_inputs
-        )
-        ps = self.softmax(logits / self.loss_temperature)[
-            ch.arange(logits.size(0)), labels
-        ]
+        logits = ch.func.functional_call(model, (weights, buffers), args=(), kwargs=kw_inputs)
+        ps = self.softmax(logits / self.loss_temperature)[ch.arange(logits.size(0)), labels]
         return (1 - ps).clone().detach().unsqueeze(-1)
 
 
@@ -506,16 +480,12 @@ class IterativeImageClassificationModelOutput(AbstractModelOutput):
         cloned_logits = logits.clone()
         # remove the logits of the correct labels from the sum
         # in logsumexp by setting to -ch.inf
-        cloned_logits[bindex, labels] = ch.tensor(
-            -ch.inf, device=logits.device, dtype=logits.dtype
-        )
+        cloned_logits[bindex, labels] = ch.tensor(-ch.inf, device=logits.device, dtype=logits.dtype)
 
         margins = logits_correct - cloned_logits.logsumexp(dim=-1)
         return margins
 
-    def get_out_to_loss_grad(
-        self, model, weights, buffers, batch: Iterable[Tensor]
-    ) -> Tensor:
+    def get_out_to_loss_grad(self, model, weights, buffers, batch: Iterable[Tensor]) -> Tensor:
         """Computes the (reweighting term Q in the paper)
 
         Args:
@@ -536,9 +506,7 @@ class IterativeImageClassificationModelOutput(AbstractModelOutput):
         logits = model(images)
         # here we are directly implementing the gradient instead of relying on autodiff to do
         # that for us
-        ps = self.softmax(logits / self.loss_temperature)[
-            ch.arange(logits.size(0)), labels
-        ]
+        ps = self.softmax(logits / self.loss_temperature)[ch.arange(logits.size(0)), labels]
         return (1 - ps).clone().detach().unsqueeze(-1)
 
 

@@ -13,13 +13,9 @@ def test_cifar10(tmp_path, device="cpu"):
     model.to(device)
     model.eval()
 
-    transform = transforms.Compose(
-        [transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
-    )
+    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
-    ds_train = datasets.CIFAR10(
-        root="/tmp", download=True, train=True, transform=transform
-    )
+    ds_train = datasets.CIFAR10(root="/tmp", download=True, train=True, transform=transform)
     loader_train = DataLoader(ds_train, batch_size=10, shuffle=False)
     if device == "cpu":
         # the default CudaProjector does not work on cpu

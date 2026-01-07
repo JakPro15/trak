@@ -104,9 +104,7 @@ class Residual(ch.nn.Module):
 
 
 def construct_rn9(num_classes=2):
-    def conv_bn(
-        channels_in, channels_out, kernel_size=3, stride=1, padding=1, groups=1
-    ):
+    def conv_bn(channels_in, channels_out, kernel_size=3, stride=1, padding=1, groups=1):
         return ch.nn.Sequential(
             ch.nn.Conv2d(
                 channels_in,

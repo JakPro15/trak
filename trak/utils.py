@@ -10,9 +10,7 @@ def test_install(use_fast_jl: bool = True):
     try:
         from trak import TRAKer
     except ImportError:
-        raise ImportError(
-            "TRAK is not installed! Please install it using `pip install traker`"
-        )
+        raise ImportError("TRAK is not installed! Please install it using `pip install traker`")
 
     data = (ch.randn(20, 256), ch.randint(high=2, size=(20,)))
     model = ch.nn.Linear(256, 2, bias=False)
@@ -68,11 +66,7 @@ def get_num_params(model: torch.nn.Module) -> int:
 
 def is_not_buffer(ind, params_dict) -> bool:
     name = params_dict[ind]
-    if (
-        ("running_mean" in name)
-        or ("running_var" in name)
-        or ("num_batches_tracked" in name)
-    ):
+    if ("running_mean" in name) or ("running_var" in name) or ("num_batches_tracked" in name):
         return False
     return True
 
@@ -125,16 +119,12 @@ def get_free_memory(device):
     return free
 
 
-def get_matrix_mult_standard(
-    features: Tensor, target_grads: Tensor, target_dtype: type
-):
+def get_matrix_mult_standard(features: Tensor, target_grads: Tensor, target_dtype: type):
     output = features @ target_grads.t()
     return output.clone().to(target_dtype)
 
 
-def get_matrix_mult_blockwise(
-    features: Tensor, target_grads: Tensor, target_dtype: type, bs: int
-):
+def get_matrix_mult_blockwise(features: Tensor, target_grads: Tensor, target_dtype: type, bs: int):
     s_features = features.shape[0]
     s_target_grads = target_grads.shape[0]
 
@@ -152,9 +142,7 @@ def get_matrix_mult_blockwise(
             slices.append((slice(i * bs, (i + 1) * bs), slice(j * bs, (j + 1) * bs)))
 
     # Allocate memory for the final output.
-    final_output = ch.empty(
-        (s_features, s_target_grads), dtype=target_dtype, device="cpu"
-    )
+    final_output = ch.empty((s_features, s_target_grads), dtype=target_dtype, device="cpu")
 
     # Output buffers pinned on the CPU to be able to collect data from the
     # GPU asynchronously
@@ -164,34 +152,23 @@ def get_matrix_mult_blockwise(
 
     # If the size is not a multiple of batch size we need extra buffers
     # with the proper shapes
-    outputs = [
-        ch.zeros((bs, bs), dtype=target_dtype, device=features.device).pin_memory()
-        for x in range(4)
-    ]
+    outputs = [ch.zeros((bs, bs), dtype=target_dtype, device=features.device).pin_memory() for x in range(4)]
     left_bottom = s_features % bs
     options = [outputs]  # List of buffers we can potentially use
     if left_bottom:
         outputs_target_gradsottom = [
-            ch.zeros(
-                (left_bottom, bs), dtype=target_dtype, device=features.device
-            ).pin_memory()
-            for x in range(4)
+            ch.zeros((left_bottom, bs), dtype=target_dtype, device=features.device).pin_memory() for x in range(4)
         ]
         options.append(outputs_target_gradsottom)
     left_right = s_target_grads % bs
     if left_right:
         outputs_right = [
-            ch.zeros(
-                (bs, left_right), dtype=target_dtype, device=features.device
-            ).pin_memory()
-            for x in range(4)
+            ch.zeros((bs, left_right), dtype=target_dtype, device=features.device).pin_memory() for x in range(4)
         ]
         options.append(outputs_right)
     if left_right and left_bottom:
         outputs_corner = [
-            ch.zeros(
-                (left_bottom, left_right), dtype=target_dtype, device=features.device
-            ).pin_memory()
+            ch.zeros((left_bottom, left_right), dtype=target_dtype, device=features.device).pin_memory()
             for x in range(4)
         ]
         options.append(outputs_corner)
@@ -216,9 +193,7 @@ def get_matrix_mult_blockwise(
 
             output_slice = features_i @ target_grads_j.t()
 
-            find_buffer_for_shape(output_slice.shape)[i % 4].copy_(
-                output_slice, non_blocking=False
-            )
+            find_buffer_for_shape(output_slice.shape)[i % 4].copy_(output_slice, non_blocking=False)
 
         # Write the previous batch of data from the temporary buffer
         # onto the final one (note that this was done by the other stream
@@ -238,9 +213,7 @@ def get_matrix_mult_blockwise(
 
     # Copy the last chunk to the final result (from the appropriate buffer)
     output_slice = final_output[previous_slice[0], previous_slice[1]]
-    output_slice.copy_(
-        find_buffer_for_shape(output_slice.shape)[i % 4], non_blocking=True
-    )
+    output_slice.copy_(find_buffer_for_shape(output_slice.shape)[i % 4], non_blocking=True)
 
     return final_output
 
@@ -277,9 +250,7 @@ def get_matrix_mult(
         target_dtype = features.dtype
 
     if use_blockwise:
-        return get_matrix_mult_blockwise(
-            features.cpu(), target_grads.cpu(), target_dtype, batch_size
-        )
+        return get_matrix_mult_blockwise(features.cpu(), target_grads.cpu(), target_dtype, batch_size)
     elif features.device.type == "cpu":
         return get_matrix_mult_standard(features, target_grads, target_dtype)
 
@@ -289,9 +260,7 @@ def get_matrix_mult(
     if output_memory < free_memory:
         return get_matrix_mult_standard(features, target_grads, target_dtype)
     else:
-        return get_matrix_mult_blockwise(
-            features.cpu(), target_grads.cpu(), target_dtype, batch_size
-        )
+        return get_matrix_mult_blockwise(features.cpu(), target_grads.cpu(), target_dtype, batch_size)
 
 
 def get_parameter_chunk_sizes(

@@ -90,13 +90,9 @@ def get_dataset(split, inds=None):
     def preprocess_function(examples):
         # Tokenize the texts
         args = (
-            (examples[sentence1_key],)
-            if sentence2_key is None
-            else (examples[sentence1_key], examples[sentence2_key])
+            (examples[sentence1_key],) if sentence2_key is None else (examples[sentence1_key], examples[sentence2_key])
         )
-        result = tokenizer(
-            *args, padding=padding, max_length=max_seq_length, truncation=True
-        )
+        result = tokenizer(*args, padding=padding, max_length=max_seq_length, truncation=True)
 
         return result
 
@@ -121,9 +117,7 @@ def init_loaders(batch_size=10):
     ds_train = ds_train.select(range(TRAIN_SET_SIZE))
     ds_val = get_dataset("val")
     ds_val = ds_val.select(range(VAL_SET_SIZE))
-    return DataLoader(
-        ds_train, batch_size=batch_size, shuffle=False, collate_fn=default_data_collator
-    ), DataLoader(
+    return DataLoader(ds_train, batch_size=batch_size, shuffle=False, collate_fn=default_data_collator), DataLoader(
         ds_val, batch_size=batch_size, shuffle=False, collate_fn=default_data_collator
     )
 

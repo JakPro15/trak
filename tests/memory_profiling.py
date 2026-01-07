@@ -11,9 +11,7 @@ from utils import download_cifar_checkpoints, download_cifar_betons
 ch = torch
 
 
-def test_cifar_acc(
-    serialize=False, dtype=ch.float32, batch_size=100, tmp_path="/tmp/trak_results/"
-):
+def test_cifar_acc(serialize=False, dtype=ch.float32, batch_size=100, tmp_path="/tmp/trak_results/"):
     device = "cuda:0"
     model = construct_rn9().to(memory_format=ch.channels_last).to(device)
     model = model.eval()
@@ -62,9 +60,7 @@ def test_cifar_acc(
         )
 
     for model_id, ckpt in enumerate(ckpts):
-        traker.start_scoring_checkpoint(
-            "test_experiment", ckpt, model_id, num_targets=2_000
-        )
+        traker.start_scoring_checkpoint("test_experiment", ckpt, model_id, num_targets=2_000)
         for batch in tqdm(loader_val, desc="Scoring..."):
             traker.score(batch=batch, num_samples=len(batch[0]))
 

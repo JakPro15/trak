@@ -25,9 +25,7 @@ def test_shape(bs: int, input_size: int, output_size: int, seed: int):
     print(output_size)
     input_data = ch.ones((bs, input_size), dtype=ch.float16, device="cuda:0")
 
-    num_sms = ch.cuda.get_device_properties(
-        ch.cuda.current_device()
-    ).multi_processor_count
+    num_sms = ch.cuda.get_device_properties(ch.cuda.current_device()).multi_processor_count
 
     try:
         result = fast_jl.project_rademacher_8(input_data, output_size, seed, num_sms)
@@ -48,9 +46,7 @@ def test_running():
     output_size = 512
     input_data = ch.ones((bs, input_size), dtype=ch.float16, device="cuda:0")
 
-    num_sms = ch.cuda.get_device_properties(
-        ch.cuda.current_device()
-    ).multi_processor_count
+    num_sms = ch.cuda.get_device_properties(ch.cuda.current_device()).multi_processor_count
 
     try:
         result = fast_jl.project_rademacher_8(input_data, output_size, seed, num_sms)
@@ -71,9 +67,7 @@ def test_even():
     output_size = 1024
     input_data = ch.ones((bs, input_size), dtype=ch.float16, device="cuda:0")
 
-    num_sms = ch.cuda.get_device_properties(
-        ch.cuda.current_device()
-    ).multi_processor_count
+    num_sms = ch.cuda.get_device_properties(ch.cuda.current_device()).multi_processor_count
 
     try:
         result = fast_jl.project_rademacher_8(input_data, output_size, seed, num_sms)
@@ -94,9 +88,7 @@ def test_odd():
     output_size = 2048
     input_data = ch.ones((bs, input_size), dtype=ch.float16, device="cuda:0")
 
-    num_sms = ch.cuda.get_device_properties(
-        ch.cuda.current_device()
-    ).multi_processor_count
+    num_sms = ch.cuda.get_device_properties(ch.cuda.current_device()).multi_processor_count
 
     try:
         result = fast_jl.project_rademacher_8(input_data, output_size, seed, num_sms)
